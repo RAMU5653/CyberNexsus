@@ -25,7 +25,7 @@ const app = express();
 app.use(express.json({
     limit: "50mb"
 }));
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 // Initialize OpenRouter AI Client
 const ai = new OpenAI({
@@ -755,4 +755,4 @@ setInterval(()=>{
 
     monitorSplunk();
 
-},1800000);
+},300000);
