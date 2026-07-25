@@ -1,0 +1,6 @@
+{
+  "name": "Threat Sentinel",
+  "description": "An AI-powered real-time SIEM and network traffic threat detection dashboard with automated incident investigation and MITRE ATT&CK mapping.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
