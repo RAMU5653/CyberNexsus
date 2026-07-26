@@ -1,216 +1,435 @@
-# CyberNexsus – AI Powered SOC Monitoring Platform
+# 🛡️ CyberNexsus
 
-CyberNexsus is an AI-powered Security Operations Center (SOC) prototype that collects logs from Windows, Linux, and Network devices using Splunk and performs automated threat analysis using AI. The platform visualizes security events on a dashboard and sends high-severity alerts to Telegram.
+> **AI-Powered Security Operations Center (SOC)**
 
----
-
-## Features
-
-- AI-powered incident investigation
-- Splunk SIEM integration
-- Windows Event Log monitoring
-- Sysmon log analysis
-- Linux log monitoring
-- Network log analysis
-- MITRE ATT&CK mapping
-- Risk score calculation
-- Interactive SOC dashboard
-- Telegram alert notifications
-- Automated security event correlation
+CyberNexsus is an AI-powered Security Operations Center (SOC) that integrates **Splunk Enterprise**, **Windows Event Logs**, **Sysmon**, **Linux Logs**, **Zeek**, and **Suricata** to provide centralized threat monitoring, AI-assisted investigation, risk scoring, MITRE ATT&CK mapping, and real-time Telegram alerts.
 
 ---
 
-## Technology Stack
+## 📌 Features
 
-### Frontend
-
-- React
-- TypeScript
-- Vite
-
-### Backend
-
-- Node.js
-- Express.js
-- TypeScript
-
-### Security
-
-- Splunk Enterprise
-- Splunk Universal Forwarder
-- Sysmon
-- Windows Event Logs
-- Linux Logs
-
-### AI
-
-- OpenRouter API
-- Llama 3.3 70B
+* Windows Event Log Monitoring
+* Sysmon Event Collection
+* Linux Log Monitoring
+* Zeek Network Traffic Analysis
+* Suricata Intrusion Detection System (IDS)
+* Splunk Enterprise SIEM Integration
+* AI-Based Threat Investigation
+* Dynamic Risk Scoring
+* MITRE ATT&CK Mapping
+* Telegram Alert Notifications
+* React Dashboard
+* Node.js Backend
 
 ---
 
-## Project Structure
+## 🏗️ Architecture
 
-```
-CyberNexsus/
-│
-├── src/
-├── assets/
-├── dist/
-├── server.ts
-├── package.json
-├── tsconfig.json
-└── README.md
+```text
+Windows VM (Sysmon + Event Logs)
+            │
+            ▼
+Linux VM (System Logs)
+            │
+            ▼
+Network Traffic
+     ├── Zeek
+     └── Suricata
+            │
+            ▼
+     Splunk Enterprise
+            │
+            ▼
+     CyberNexsus AI Engine
+            │
+     ├── React Dashboard
+     ├── Telegram Alerts
+     ├── Risk Score
+     └── MITRE ATT&CK Mapping
 ```
 
 ---
 
-## Prerequisites
+# 🛠️ Technology Stack
 
-- Node.js 20+
-- Splunk Enterprise
-- Splunk Universal Forwarder
-- OpenRouter API Key
-- Telegram Bot Token
+## Frontend
+
+* React
+* TypeScript
+* Tailwind CSS
+* Vite
+
+## Backend
+
+* Node.js
+* Express.js
+
+## SIEM
+
+* Splunk Enterprise
+* Splunk Universal Forwarder
+
+## Network Security
+
+* Zeek
+* Suricata
+
+## AI
+
+* OpenRouter API
+* Llama 3.3 70B
+
+## Notifications
+
+* Telegram Bot API
 
 ---
 
-## Installation
+# 📋 Prerequisites
 
-Clone the repository
+* Ubuntu/Kali Linux
+* Windows 10/11 VM
+* Node.js 20+
+* Git
+* Python 3
+* Splunk Enterprise
+* Splunk Universal Forwarder
+
+---
+
+# 📥 Clone Repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/CyberNexsus.git
-```
+git clone https://github.com/RAMU5653/CyberNexsus.git
 
-Move into the project
-
-```bash
 cd CyberNexsus
 ```
 
-Install dependencies
+---
+
+# ⚙️ Backend Installation
 
 ```bash
+cd backend
+
 npm install
 ```
 
 ---
 
-## Configure Environment Variables
+# 💻 Frontend Installation
 
-Create a `.env` file in the project root.
+```bash
+cd frontend
 
-Example:
-
-```env
-PORT=3000
-
-OPENROUTER_API_KEY=YOUR_OPENROUTER_API_KEY
-
-TELEGRAM_BOT_TOKEN=YOUR_TELEGRAM_BOT_TOKEN
-TELEGRAM_GROUP_CHAT_ID=YOUR_GROUP_CHAT_ID
-
-SPLUNK_HOST=localhost
-SPLUNK_PORT=8089
-SPLUNK_USER=YOUR_SPLUNK_USERNAME
-SPLUNK_PASSWORD=YOUR_SPLUNK_PASSWORD
+npm install
 ```
 
 ---
 
-## Run the Project
+# 🔑 Configure Environment Variables
 
-Development Mode
+Create a `.env` file inside the backend folder.
+
+```env
+OPENROUTER_API_KEY=your_openrouter_api_key
+
+SPLUNK_HOST=https://localhost:8089
+SPLUNK_USERNAME=admin
+SPLUNK_PASSWORD=your_password
+
+BOT_TOKEN=your_telegram_bot_token
+CHAT_ID=your_telegram_chat_id
+```
+
+---
+
+# 📊 Install Splunk Enterprise
+
+Start Splunk:
 
 ```bash
+sudo /opt/splunk/bin/splunk start --run-as-root
+```
+
+Enable boot start:
+
+```bash
+sudo /opt/splunk/bin/splunk enable boot-start --accept-license --answer-yes --no-prompt
+```
+
+---
+
+# 🔄 Install Splunk Universal Forwarder
+
+Install Splunk Universal Forwarder on Windows and Linux.
+
+Configure `outputs.conf`:
+
+```ini
+[tcpout]
+defaultGroup=indexer
+
+[tcpout:indexer]
+server=<Splunk_Server_IP>:9997
+```
+
+Restart the Universal Forwarder after configuration.
+
+---
+
+# 🌐 Install Zeek
+
+Update packages:
+
+```bash
+sudo apt update
+
+sudo apt upgrade -y
+```
+
+Install dependencies:
+
+```bash
+sudo apt install -y cmake make gcc g++ flex bison libpcap-dev libssl-dev python3 zlib1g-dev swig
+```
+
+Clone Zeek:
+
+```bash
+git clone --recursive https://github.com/zeek/zeek.git
+
+cd zeek
+```
+
+Build Zeek:
+
+```bash
+mkdir build
+
+cd build
+
+cmake ..
+
+make -j$(nproc)
+
+sudo make install
+```
+
+Add Zeek to PATH:
+
+```bash
+echo 'export PATH=/usr/local/zeek/bin:$PATH' >> ~/.bashrc
+
+source ~/.bashrc
+```
+
+Verify installation:
+
+```bash
+zeek --version
+```
+
+---
+
+# 🚀 Deploy Zeek
+
+Deploy Zeek:
+
+```bash
+sudo /usr/local/zeek/bin/zeekctl deploy
+```
+
+Check status:
+
+```bash
+sudo /usr/local/zeek/bin/zeekctl status
+```
+
+View running nodes:
+
+```bash
+sudo /usr/local/zeek/bin/zeekctl top
+```
+
+Zeek logs are stored in:
+
+```text
+/usr/local/zeek/logs/current/
+```
+
+Verify logs:
+
+```bash
+ls -lah /usr/local/zeek/logs/current/
+```
+
+---
+
+# 🛡️ Install Suricata
+
+```bash
+sudo apt update
+
+sudo apt install -y suricata
+```
+
+Verify installation:
+
+```bash
+suricata --build-info
+```
+
+Enable and start Suricata:
+
+```bash
+sudo systemctl enable suricata
+
+sudo systemctl start suricata
+
+sudo systemctl status suricata
+```
+
+Suricata logs are stored in:
+
+```text
+/var/log/suricata/
+```
+
+---
+
+# 📂 Configure Splunk Inputs
+
+Monitor Zeek logs:
+
+```ini
+[monitor:///usr/local/zeek/logs/current]
+index = network
+sourcetype = zeek
+```
+
+Monitor Suricata logs:
+
+```ini
+[monitor:///var/log/suricata/eve.json]
+index = network
+sourcetype = suricata:json
+```
+
+Restart Splunk:
+
+```bash
+sudo /opt/splunk/bin/splunk restart
+```
+
+---
+
+# ✅ Verify Data in Splunk
+
+Zeek:
+
+```spl
+index=network sourcetype=zeek
+```
+
+Suricata:
+
+```spl
+index=network sourcetype=suricata:json
+```
+
+Windows:
+
+```spl
+index=windows
+```
+
+Linux:
+
+```spl
+index=linux
+```
+
+---
+
+# ▶️ Run Backend
+
+```bash
+cd backend
+
 npm run dev
 ```
 
-Production Build
+---
+
+# ▶️ Run Frontend
 
 ```bash
-npm run build
-npm start
+cd frontend
+
+npm run dev
 ```
 
 ---
 
-## Dashboard
+# 🌍 Dashboard
 
-Open your browser
+Open your browser:
 
-```
+```text
 http://localhost:3000
 ```
 
 ---
 
-## API Endpoints
+# 📁 Project Structure
 
-### Test Splunk
-
-```
-GET /api/splunk/test
-```
-
-### Latest Logs
-
-```
-GET /api/splunk/logs
-```
-
-### Log Statistics
-
-```
-GET /api/splunk/stats
-```
-
-### Analyze Threats
-
-```
-POST /api/threats/analyze
-```
-
-### Telegram Test
-
-```
-GET /api/test/telegram
+```text
+CyberNexsus/
+├── backend/
+├── frontend/
+├── README.md
+├── LICENSE
+└── docs/
 ```
 
 ---
 
-## Workflow
+# 🚀 Future Enhancements
 
-```
-Windows
-      │
-      │
-Linux ├────► Splunk Enterprise
-      │
-Network
-      │
-      ▼
-CyberNexsus Backend
-      │
-      ▼
-OpenRouter AI
-      │
-      ▼
-Threat Analysis
-      │
-      ├── Dashboard
-      └── Telegram Alerts
-```
+* Microsoft Sentinel Integration
+* Elastic Stack Support
+* SOAR Automation
+* Threat Intelligence Integration
+* Email Alerts
+* Mobile Application
+* AI SOC Assistant
+* Threat Hunting Module
+* Case Management
 
 ---
 
-## Current Status
+# 🤝 Contributing
 
-This project is currently a prototype developed for learning and demonstrating AI-assisted SOC operations.
+Contributions are welcome. Fork the repository, create a feature branch, commit your changes, and open a Pull Request.
 
 ---
 
-## License
+# 📄 License
 
-This project is intended for educational and research purposes.
+This project is licensed under the MIT License.
+
+---
+
+# 👨‍💻 Author
+
+**Venkataram Gumma**
+
+GitHub: https://github.com/RAMU5653
+
+---
+
+# ⭐ Support
+
+If you found this project useful, please consider giving it a ⭐ on GitHub.
+
