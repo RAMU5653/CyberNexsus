@@ -8,6 +8,9 @@ export interface LogEvent {
   mitreId?: string;
   mitreName?: string;
   category: string;
+  index?: string;
+  sourcetype?: string;
+  eventCode?: number;
   details: {
     srcIp?: string;
     dstIp?: string;

@@ -7,7 +7,9 @@ export async function getLiveLogs() {
 
   const data = await res.json();
 
-  return data.map((item: any, index: number) => {
+  const riskScoreHeader = res.headers.get("X-SOC-Risk-Score");
+
+  const logs = data.map((item: any, index: number) => {
     const e = item.result;
 
     let severity = "low";
@@ -38,10 +40,18 @@ export async function getLiveLogs() {
       timestamp: e._time,
       host: e.host,
       source: e.sourcetype,
+      sourcetype: e.sourcetype,
+      index: e.index,
+      eventCode: Number(e.EventCode || e.EventID || e.event_id || 0) || undefined,
       severity,
       message: e._raw,
       category: e.index,
       details: e,
     };
   });
+
+  return {
+    logs,
+    riskScore: riskScoreHeader !== null ? Number(riskScoreHeader) : 0,
+  };
 }

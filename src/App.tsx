@@ -41,11 +41,17 @@ export default function App() {
 
   // Core logs & stream state
   const [logs, setLogs] = useState<LogEvent[]>([]);
+const [triggeredAlarms, setTriggeredAlarms] = useState(0);
+
   const [timelineData, setTimelineData] = useState<any[]>([]);
   const [isStreaming, setIsStreaming] = useState(true);
   const [selectedLogIds, setSelectedLogIds] = useState<string[]>([]);
   const [riskScore, setRiskScore] = useState(0);
-
+// Normal User Security Scanner
+const [userInput, setUserInput] = useState("");
+const [userAnalysis, setUserAnalysis] = useState<any>(null);
+const [userAnalysisLoading, setUserAnalysisLoading] = useState(false);
+const [userAnalysisError, setUserAnalysisError] = useState<string | null>(null);
   // MITRE state
   const [mitreTechniques, setMitreTechniques] = useState<MITRETechnique[]>(getInitialMitreMatrix());
   const [selectedMitreTech, setSelectedMitreTech] = useState<MITRETechnique | null>(null);
@@ -76,8 +82,19 @@ export default function App() {
 useEffect(() => {
   const loadLogs = async () => {
     try {
-      const liveLogs = await getLiveLogs();
-      setLogs(liveLogs);
+      const liveData = await getLiveLogs();
+
+setLogs(liveData.logs);
+
+const newRiskScore = liveData.riskScore || 0;
+setRiskScore(newRiskScore);
+
+// High or Critical incident
+if (newRiskScore >= 50) {
+  setTriggeredAlarms(1);
+} else {
+  setTriggeredAlarms(0);
+}
     } catch (err) {
       console.error("Failed to load Splunk logs:", err);
     }
@@ -113,176 +130,9 @@ useEffect(() => {
     });
     setMitreTechniques(nextMatrix);
 
-    // Sync overall environment risk score based on high severity logs
-    // Professional SOC Risk Engine
-
-let windowsRisk = 0;
-let linuxRisk = 0;
-let networkRisk = 0;
-
-let correlationBonus = 0;
-
-
-logs.forEach(log => {
-
-  const sourcetype = (log.sourcetype || "").toLowerCase();
-
-  const message = JSON.stringify(log).toLowerCase();
-
-
-  // ======================
-  // Windows Risk
-  // ======================
-
-  if(
-    sourcetype.includes("wineventlog") ||
-    sourcetype.includes("xmlwineventlog") ||
-    sourcetype.includes("sysmon") ||
-    log.index === "windows-10"
-  ){
-
-    const eventCode = Number(
-      log.eventCode ||
-      log.EventCode ||
-      log.EventID ||
-      log.event_id
-    );
-
-
-    // Failed Login
-    if(eventCode === 4625){
-      windowsRisk += 15;
-    }
-
-
-    // Privilege escalation
-    if(eventCode === 4672){
-      windowsRisk += 25;
-    }
-
-
-    // Sysmon detection
-    if(
-      sourcetype.includes("sysmon") ||
-      message.includes("sysmon")
-    ){
-      windowsRisk += 10;
-    }
-
-  }
-
-
-
-  // ======================
-  // Kali Linux Risk
-  // ======================
-
-  if(
-    log.index === "linux" ||
-    sourcetype.includes("syslog") ||
-    sourcetype.includes("auth")
-  ){
-
-    if(message.includes("failed password")){
-      linuxRisk += 5;
-    }
-
-
-    if(message.includes("sudo")){
-      linuxRisk += 10;
-    }
-
-  }
-
-
-
-
-  // ======================
-  // Network Risk
-  // ======================
-
-
-  if(
-    sourcetype.includes("suricata") ||
-    message.includes("suricata")
-  ){
-
-    if(message.includes("alert")){
-      networkRisk += 30;
-    }
-    else{
-      networkRisk += 15;
-    }
-
-  }
-
-
-
-  if(
-    sourcetype.includes("zeek") ||
-    message.includes("conn_state") ||
-    message.includes("orig_bytes")
-  ){
-
-    networkRisk += 15;
-
-  }
-
-
-});
-
-
-
-
-// ======================
-// Correlation Bonus
-// ======================
-
-if(
- windowsRisk > 20 &&
- linuxRisk > 20 &&
- networkRisk > 20
-){
-
- correlationBonus = 25;
-
-}
-
-
-
-const totalLogs = logs.length || 1;
-
-let finalRisk =
-(
-(windowsRisk / totalLogs) +
-(linuxRisk / totalLogs) +
-(networkRisk / totalLogs) +
-correlationBonus
-);
-
-
-
-finalRisk = Math.min(
-100,
-Math.round(finalRisk)
-);
-
-
-
-console.log(
-"SOC Risk Debug:",
-{
-windowsRisk,
-linuxRisk,
-networkRisk,
-correlationBonus,
-finalRisk
-}
-);
-
-
-
-setRiskScore(finalRisk);
+    // Risk score is calculated by the backend SOC risk engine and returned
+  // in X-SOC-Risk-Score. The dashboard does not recalculate it locally,
+  // so it always uses the exact same score as Telegram.
 }, [logs]);
  
   // Simulation execution handler loop
@@ -405,43 +255,80 @@ const getHostChartData = () => {
 
 
 const getTimelineChartData = () => {
-
-  const windows = logs.filter(log =>
-  log.host === "Windows_10" ||
-  log.sourcetype?.startsWith("WinEventLog") ||
-  log.sourcetype?.startsWith("XmlWinEventLog")
-).length;
-
-
-  const linux = logs.filter(log =>
-    log.host?.toLowerCase().includes("ram") ||
-    log.host?.toLowerCase().includes("kali") ||
-    log.index === "linux" ||
-    log.sourcetype?.includes("syslog") ||
-    log.sourcetype?.includes("auth")
+  const windows = logs.filter(
+    (log) =>
+      log.host === "Windows_10" ||
+      log.sourcetype?.startsWith("WinEventLog") ||
+      log.sourcetype?.startsWith("XmlWinEventLog")
   ).length;
 
-
-  const network = logs.filter(log =>
-    log.host?.toLowerCase().includes("ram") ||
-    log.index === "network" ||
-    log.sourcetype?.includes("zeek") ||
-    log.sourcetype?.includes("suricata")
+  const linux = logs.filter(
+    (log) =>
+      log.host?.toLowerCase().includes("kali") ||
+      log.index === "linux" ||
+      log.sourcetype?.toLowerCase().includes("syslog") ||
+      log.sourcetype?.toLowerCase().includes("auth")
   ).length;
 
+  const network = logs.filter(
+    (log) =>
+      log.index === "network" ||
+      log.sourcetype?.toLowerCase().includes("zeek") ||
+      log.sourcetype?.toLowerCase().includes("suricata")
+  ).length;
 
   return [
     {
-      time: new Date().toLocaleTimeString("en-US",{hour12:false}),
+      time: new Date().toLocaleTimeString("en-US", {
+        hour12: false,
+      }),
       Windows: windows,
       Linux: linux,
-      Network: network
-    }
+      Network: network,
+    },
   ];
 };
 
   const activeScenario = scenarios.find(s => s.id === activeSimulation);
+// Analyze suspicious content entered by a normal user
+const handleUserSecurityAnalysis = async () => {
+  if (!userInput.trim()) {
+    setUserAnalysisError("Please enter a message, email, or URL to analyze.");
+    return;
+  }
 
+  setUserAnalysisLoading(true);
+  setUserAnalysisError(null);
+  setUserAnalysis(null);
+
+  try {
+    const response = await fetch("/api/user/analyze", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        text: userInput
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Analysis failed");
+    }
+
+    setUserAnalysis(data.analysis);
+
+  } catch (error: any) {
+    console.error("User security analysis error:", error);
+    setUserAnalysisError(
+      error.message || "Unable to analyze the content"
+    );
+  } finally {
+    setUserAnalysisLoading(false);
+  }
+};
   return (
     <div className="min-h-screen bg-[#05070a] text-[#e0e6ed] flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-300 relative overflow-hidden">
       {/* Background Atmosphere */}
@@ -507,9 +394,9 @@ const getTimelineChartData = () => {
           </div>
 
           {/* Active incidents indicator */}
-          {logs.filter(l => l.severity === "high" || l.severity === "critical").length > 0 ? (
+          {triggeredAlarms > 0 ? (
             <div className="px-3 py-1 border border-red-500/50 bg-red-500/10 rounded text-red-500 text-[10px] font-mono animate-pulse font-bold select-none tracking-widest">
-              {logs.filter(l => l.severity === "high" || l.severity === "critical").length} ACTIVE INCIDENTS
+              {triggeredAlarms} ACTIVE INCIDENTS
             </div>
           ) : (
             <div className="px-3 py-1 border border-green-500/30 bg-green-500/5 rounded text-green-400 text-[10px] font-mono font-medium select-none tracking-widest">
@@ -587,7 +474,7 @@ const getTimelineChartData = () => {
                 <div className="space-y-1.5">
                   <p className="text-[10px] font-bold font-mono uppercase tracking-widest text-white/40">Triggered Alarms (High/Crit)</p>
                   <p className="text-3xl font-black font-mono text-amber-500">
-                    {logs.filter(l => l.severity === "high" || l.severity === "critical").length}
+                    {triggeredAlarms}
                   </p>
                   <p className="text-[11px] text-[#e0e6ed]/40 font-mono">IDS / Sysmon Signatures</p>
                 </div>
@@ -610,7 +497,135 @@ const getTimelineChartData = () => {
                 <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-emerald-500/50"></div>
               </div>
             </div>
+{/* Normal User Security Scanner */}
+<div className="bg-[#0d1117] border border-cyan-500/20 rounded-xl p-6 shadow-2xl">
 
+  <div className="flex items-center gap-3 mb-5">
+    <div className="p-3 bg-cyan-500/10 rounded-lg">
+      <ShieldAlert className="w-6 h-6 text-cyan-400" />
+    </div>
+
+    <div>
+      <h3 className="text-lg font-bold text-slate-100">
+        Normal User Security Scanner
+      </h3>
+
+      <p className="text-xs text-white/40 mt-1">
+        Paste a suspicious message, phishing email, or URL for analysis
+      </p>
+    </div>
+  </div>
+
+  <textarea
+    value={userInput}
+    onChange={(e) => setUserInput(e.target.value)}
+    placeholder="Paste a suspicious message or URL here..."
+    className="w-full min-h-[140px] bg-[#05070a] border border-white/10 rounded-lg p-4 text-sm text-slate-200 placeholder:text-white/20 outline-none focus:border-cyan-500/50 font-mono resize-y"
+  />
+
+  <div className="flex gap-3 mt-4">
+
+    <button
+      onClick={handleUserSecurityAnalysis}
+      disabled={userAnalysisLoading}
+      className="flex items-center gap-2 bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-black px-5 py-2.5 rounded-lg font-bold text-sm"
+    >
+      {userAnalysisLoading ? (
+        <RefreshCw className="w-4 h-4 animate-spin" />
+      ) : (
+        <Shield className="w-4 h-4" />
+      )}
+
+      {userAnalysisLoading ? "Analyzing..." : "Analyze Content"}
+    </button>
+
+    <button
+      onClick={() => {
+        setUserInput("");
+        setUserAnalysis(null);
+        setUserAnalysisError(null);
+      }}
+      className="px-5 py-2.5 border border-white/10 rounded-lg text-sm text-slate-300 hover:bg-white/5"
+    >
+      Clear
+    </button>
+
+  </div>
+
+  {userAnalysisError && (
+    <div className="mt-4 p-4 border border-red-500/30 bg-red-500/10 rounded-lg text-red-300 text-sm">
+      {userAnalysisError}
+    </div>
+  )}
+
+  {userAnalysis && (
+    <div className="mt-6 border border-white/10 rounded-xl p-5 bg-[#05070a]">
+
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <p className="text-xs uppercase tracking-widest text-white/40">
+            Security Analysis Result
+          </p>
+
+          <h4 className="text-lg font-bold text-slate-100 mt-1">
+            {userAnalysis.severity.toUpperCase()} RISK
+          </h4>
+        </div>
+
+        <div className="text-3xl font-black font-mono text-cyan-400">
+          {userAnalysis.riskScore}/100
+        </div>
+      </div>
+
+      <div className="mb-5">
+        <p className="text-xs font-bold text-white/50 uppercase mb-3">
+          Detected Indicators
+        </p>
+
+        {userAnalysis.indicators?.length > 0 ? (
+          <div className="space-y-2">
+            {userAnalysis.indicators.map(
+              (indicator: string, index: number) => (
+                <div
+                  key={index}
+                  className="flex items-center gap-2 text-sm text-slate-300"
+                >
+                  <AlertCircle className="w-4 h-4 text-amber-400" />
+                  {indicator}
+                </div>
+              )
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-emerald-400">
+            No suspicious indicators detected.
+          </p>
+        )}
+      </div>
+
+      {userAnalysis.urls?.length > 0 && (
+        <div>
+          <p className="text-xs font-bold text-white/50 uppercase mb-3">
+            Detected URLs
+          </p>
+
+          {userAnalysis.urls.map(
+            (url: string, index: number) => (
+              <div
+                key={index}
+                className="p-3 mb-2 bg-black/30 border border-white/5 rounded-lg text-xs font-mono text-cyan-400 break-all"
+              >
+                {url}
+              </div>
+            )
+          )}
+        </div>
+      )}
+
+    </div>
+  )}
+
+</div>
             {/* Middle Section: Visualizations Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Dynamic Log Traffic chart */}
